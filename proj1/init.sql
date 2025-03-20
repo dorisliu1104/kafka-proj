@@ -1,7 +1,7 @@
 CREATE TABLE department_employee(
     department VARCHAR(100),
-    department_division   VARCHAR(50),
-    position_title VARCHAR(50),
+    department_division   VARCHAR(100),
+    position_title VARCHAR(100),
     hire_date DATE,
     salary decimal
 );
