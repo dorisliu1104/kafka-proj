@@ -74,7 +74,7 @@ class ConsumingMethods:
         try:
             conn = psycopg2.connect(
                 #use localhost if not run in Docker
-                host="0.0.0.0",
+                host="localhost",
                 database="postgres",
                 user="postgres",
                 port = '5432',
@@ -82,10 +82,18 @@ class ConsumingMethods:
             conn.autocommit = True
             cur = conn.cursor()
             #your logic goes here
+
+            
+
+            cur.execute(
+                'INSERT INTO department_employee (department, department_division, position_title, hire_date, salary) VALUES (%s, %s, %s, %s, %s)',
+                (e.emp_dept, e.emp_dept_div, e.emp_pos_title, e.emp_hire_date, e.emp_salary)
+            )            
+            cur.execute("insert into  department_employee_salary  (department,total_salary)  values (%s, %s) on conflict(department) do update set total_salary = department_employee_salary.total_salary + %s;",(e.emp_dept, int(float(e.emp_salary)), int(float(e.emp_salary))))
             cur.close()
         except Exception as err:
             print(err)
 
 if __name__ == '__main__':
-    consumer = SalaryConsumer(group_id=?) #what is the group id here?
-    consumer.consume([?],ConsumingMethods.add_salary) #what is the topic here?
+    consumer = SalaryConsumer(group_id='juan') #what is the group id here?
+    consumer.consume([employee_topic_name], ConsumingMethods.add_salary) #what is the topic here?

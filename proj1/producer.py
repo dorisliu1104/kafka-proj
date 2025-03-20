@@ -26,14 +26,18 @@ THE SOFTWARE.
 import csv
 import json
 import os
-
+import pandas as pd
+import numpy as np
+import logging
 
 from confluent_kafka import Producer
 from employee import Employee
-import confluent_kafka
 import pandas as pd
 from confluent_kafka.serialization import StringSerializer
 
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("kafka-producer")
 
 employee_topic_name = "bf_employee_salary"
 csv_file = 'Employee_Salaries.csv'
@@ -55,11 +59,23 @@ class DataHandler:
     Your data handling logic goes here. 
     You can also implement the same logic elsewhere. Your call
     '''
-    pass
+    def __init__(self, filePath):
+        self.filePath = filePath
+        
+    def readData(self):
+        df = pd.read_csv(self.filePath)
+        df['hireDate'] = pd.to_datetime(df["Initial Hire Date"], format='%d-%b-%Y')
+        wantedDepartments = ['ECC','CIT','EMS']
+        df = df.query('Department in @wantedDepartments and hireDate >= "2010-01-01"')
+        df['Salary'].fillna(0, inplace = True)
+        df['Salary'] = np.floor(df['Salary']).astype(int)
+    
+        return df.to_numpy()
+
 
 if __name__ == '__main__':
     encoder = StringSerializer('utf-8')
-    reader = DataHandler()
+    reader = DataHandler(csv_file)
     producer = salaryProducer()
     '''
     # implement other instances as needed
@@ -71,4 +87,16 @@ if __name__ == '__main__':
         producer.produce(employee_topic_name, key=encoder(emp.emp_dept), value=encoder(emp.to_json()))
         producer.poll(1)
     '''
+    data = reader.readData()
+    logger.info("Producer started")
+    for line in data:
+        emp = Employee.from_csv_line(line)
+        producer.produce(employee_topic_name, key=encoder(emp.emp_dept), value=encoder(emp.to_json()))
+        logger.info(f"Producer produces line {line}")
+        producer.poll(1)
+    
+    logger.info("Producer completed")
+
+
+    
     
