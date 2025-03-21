@@ -29,10 +29,15 @@ import os
 from confluent_kafka import Producer
 from employee import Employee
 import confluent_kafka
-from pyspark.sql import SparkSession
+import logging
 import pandas as pd
 from confluent_kafka.serialization import StringSerializer
 import psycopg2
+
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("kafka-producer")
+
 
 employee_topic_name = "bf_employee_cdc"
 
@@ -47,7 +52,7 @@ class cdcProducer(Producer):
         super().__init__(producerConfig)
         self.running = True
     
-    def fetch_cdc(self,):
+    def cleanupCdc(self):
         try:
             conn = psycopg2.connect(
                 host="localhost",
@@ -58,21 +63,46 @@ class cdcProducer(Producer):
             conn.autocommit = True
             cur = conn.cursor()
             #your logic should go here
-            
 
-
+            cur.execute("DELETE FROM employeeCdc;")
             cur.close()
+            conn.close()
         except Exception as err:
-            pass
-        
-        return # if you need to return sth, modify here
-    
+            print(f"Error fetching CDC: {err}")
+
+    def fetchCdc(self):
+        try:
+            conn = psycopg2.connect(
+                host="localhost",
+                database="postgres",
+                user="postgres",
+                port = '5432',
+                password="postgres")
+            conn.autocommit = True
+            cur = conn.cursor()
+            #your logic should go here
+
+            cur.execute("SELECT * FROM employeeCdc;")
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            return rows
+        except Exception as err:
+            raise Exception(f"Error fetching CDC: {err}")
+
 
 if __name__ == '__main__':
     encoder = StringSerializer('utf-8')
     producer = cdcProducer()
     
     while producer.running:
-        # your implementation goes here
-        pass
-    
+        updateRows = producer.fetchCdc()
+        if updateRows:
+            logger.info(f'Sending records {updateRows} to Kafka')
+        for row in updateRows:
+            emp = Employee.from_line(row)
+            producer.produce(employee_topic_name, key=encoder(str(emp.emp_id)), value=encoder(emp.to_json()))
+        
+        if updateRows:
+            producer.cleanupCdc()
+

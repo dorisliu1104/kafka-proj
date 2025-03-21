@@ -95,5 +95,5 @@ class ConsumingMethods:
             print(err)
 
 if __name__ == '__main__':
-    consumer = SalaryConsumer(group_id='juan') #what is the group id here?
+    consumer = SalaryConsumer(group_id='p1') #what is the group id here?
     consumer.consume([employee_topic_name], ConsumingMethods.add_salary) #what is the topic here?

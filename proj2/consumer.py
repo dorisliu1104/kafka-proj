@@ -70,13 +70,27 @@ def update_dst(msg):
         cur = conn.cursor()
         #your logic goes here
 
-
-
+        if e.action == 'INSERT':
+            cur.execute(
+                "INSERT INTO employeeTransformed (employeeId, firstName, lastName, dob, city) VALUES (%s, %s, %s, %s, %s);",
+                (e.emp_id, e.emp_FN, e.emp_LN, e.emp_dob, e.emp_city)
+            )
+        elif e.action == 'UPDATE':
+            cur.execute(
+                "UPDATE employeeTransformed SET employeeId = %s, firstName = %s , lastName = %s, dob = %s, city = %s " +
+                "WHERE employeeId = %s;",
+                (e.emp_id, e.emp_FN, e.emp_LN, e.emp_dob, e.emp_city, e.emp_id)
+            )
+        elif e.action == 'DELETE':
+            cur.execute(
+                "DELETE FROM employeeTransformed WHERE WHERE employeeId = %s;",(e.emp_id)
+            )
+            
 
         cur.close()
     except Exception as err:
         print(err)
 
 if __name__ == '__main__':
-    consumer = cdcConsumer(group_id=?) 
+    consumer = cdcConsumer(group_id= 'p2') 
     consumer.consume([employee_topic_name], update_dst)
