@@ -34,6 +34,15 @@ from confluent_kafka.serialization import StringDeserializer
 from employee import Employee
 from employee import Employee
 from producer import employee_topic_name
+import logging
+
+
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("kafka-consumer")
+
+
+employee_topic_name = "bf_employee_cdc"
 
 class cdcConsumer(Consumer):
     #if running outside Docker (i.e. producer is NOT in the docer-compose file): host = localhost and port = 29092
@@ -52,8 +61,13 @@ class cdcConsumer(Consumer):
             self.subscribe(topics)
             while self.keep_runnning:
                 #implement your logic here
-
-                pass
+                msg = self.poll(timeout=1.0)
+                if not msg:
+                    pass 
+                elif msg.error():
+                    raise Exception(msg.error())
+                else:
+                    processing_func(msg)
         finally:
             self.close()
 
@@ -83,7 +97,7 @@ def update_dst(msg):
             )
         elif e.action == 'DELETE':
             cur.execute(
-                "DELETE FROM employeeTransformed WHERE WHERE employeeId = %s;",(e.emp_id)
+                "DELETE FROM employeeTransformed WHERE employeeId = %s;",(e.emp_id,)
             )
             
 
